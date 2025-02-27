@@ -61,7 +61,6 @@ Function FunkyFacetLink {
     }
 }
 
-
 ######## MAIN BIT ########
 
 #API URL
@@ -69,9 +68,6 @@ $apiUrl = "https://bsky.social/xrpc/com.atproto.repo.createRecord"
 
 # ma DID
 $did = "did:plc:k54achhksfhvlp5jd3rzv32h"
-
-# The DID of the mention
-#$mentionDid = "did:plc:hfgp6pj3akhqxntgqwramlbg"
 
 # The text of the post
 #$postText = "Hello Darry Borrans! direct from Invoke-RestMethod with funky facets"
@@ -89,17 +85,18 @@ $facets = @()
 
 # Mentions
 #$usernameText = "Darry Borrans"
+# The DID of the mention
+#$mentionDid = "did:plc:hfgp6pj3akhqxntgqwramlbg"
 
 #$mention = FunkyFacetLink -Text $usernameText  -did $mentionDid -Message $postText -FacetType mention
 
-$facets += $mention
+#$facets += $mention
 
 # Tags
 $PostTagText = "#Python"
 $BckGrndTagName = 'PowerShell'
 
-
-$tagFacet = _newFacetLink -Text $PostTagText -Message $postText -FacetType tag -Tag $BckGrndTagName
+$tagFacet = FunkyFacetLink  -Text $PostTagText -Message $postText -FacetType tag -Tag $BckGrndTagName
 
 $facets += $tagFacet
 
@@ -110,8 +107,6 @@ $body = @{
     collection = 'app.bsky.feed.post'
     record     = $record
 } | ConvertTo-Json -Depth 7
-
-
 
 # Get the headers for the API request
 $headers = (Get-BskySession).CreateHeader()
