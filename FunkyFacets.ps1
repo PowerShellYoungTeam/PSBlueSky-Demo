@@ -1,4 +1,4 @@
-Function FunkyFacetLink {
+Function FunkyFacetLink { # this was nabbed from PSBlueSky (_newFacetLink in helpers.ps1)
     # https://docs.bsky.app/docs/advanced-guides/post-richtext
     [CmdletBinding()]
     Param(
