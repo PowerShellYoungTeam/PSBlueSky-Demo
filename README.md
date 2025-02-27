@@ -1,4 +1,4 @@
-#PSbluesky demo
+# PSbluesky demo
 
 just a notebook from the demo plus me playing about in some ps1 files
 
