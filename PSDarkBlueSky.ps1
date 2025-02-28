@@ -80,27 +80,28 @@ $form.Controls.Add($labelApiUrl)
 
 $textBoxApiUrl = New-Object System.Windows.Forms.TextBox
 $textBoxApiUrl.Text = "https://bsky.social/xrpc/com.atproto.repo.createRecord"
-$textBoxApiUrl.Location = New-Object System.Drawing.Point(100, 20)
+$textBoxApiUrl.Location = New-Object System.Drawing.Point(120, 20) # Moved to the right
 $textBoxApiUrl.Size = New-Object System.Drawing.Size(400, 20)
 $form.Controls.Add($textBoxApiUrl)
 
 # DID
 $labelDid = New-Object System.Windows.Forms.Label
-$labelDid.Text = "DID:"
+$labelDid.Text = "UserName:"
 $labelDid.Location = New-Object System.Drawing.Point(10, 50)
 $form.Controls.Add($labelDid)
 
 $textBoxDid = New-Object System.Windows.Forms.TextBox
-$textBoxDid.Location = New-Object System.Drawing.Point(100, 50)
+$textBoxDid.Location = New-Object System.Drawing.Point(120, 50) # Moved to the right
 $textBoxDid.Size = New-Object System.Drawing.Size(300, 20)
+$textBoxDid.Text = "poshyoungteam.bsky.social"
 $form.Controls.Add($textBoxDid)
 
 $buttonGetDid = New-Object System.Windows.Forms.Button
 $buttonGetDid.Text = "Get DID"
-$buttonGetDid.Location = New-Object System.Drawing.Point(410, 50)
+$buttonGetDid.Location = New-Object System.Drawing.Point(430, 50) # Moved to the right
 $buttonGetDid.Add_Click({
         $username = $textBoxDid.Text
-        $did = Get-BskyAccountDid -Username $username
+        $did = Get-BskyAccountDid -AccountName $username
         $textBoxDid.Text = $did
     })
 $form.Controls.Add($buttonGetDid)
@@ -112,27 +113,27 @@ $labelPostText.Location = New-Object System.Drawing.Point(10, 80)
 $form.Controls.Add($labelPostText)
 
 $textBoxPostText = New-Object System.Windows.Forms.TextBox
-$textBoxPostText.Location = New-Object System.Drawing.Point(100, 80)
+$textBoxPostText.Location = New-Object System.Drawing.Point(120, 80) # Moved to the right
 $textBoxPostText.Size = New-Object System.Drawing.Size(400, 20)
 $form.Controls.Add($textBoxPostText)
 
 # Mentions
 $labelMentionDid = New-Object System.Windows.Forms.Label
-$labelMentionDid.Text = "Mention DID:"
+$labelMentionDid.Text = "Mention Username:"
 $labelMentionDid.Location = New-Object System.Drawing.Point(10, 110)
 $form.Controls.Add($labelMentionDid)
 
 $textBoxMentionDid = New-Object System.Windows.Forms.TextBox
-$textBoxMentionDid.Location = New-Object System.Drawing.Point(100, 110)
+$textBoxMentionDid.Location = New-Object System.Drawing.Point(120, 110) # Moved to the right
 $textBoxMentionDid.Size = New-Object System.Drawing.Size(300, 20)
 $form.Controls.Add($textBoxMentionDid)
 
 $buttonGetMentionDid = New-Object System.Windows.Forms.Button
 $buttonGetMentionDid.Text = "Get Mention DID"
-$buttonGetMentionDid.Location = New-Object System.Drawing.Point(410, 110)
+$buttonGetMentionDid.Location = New-Object System.Drawing.Point(430, 110) # Moved to the right
 $buttonGetMentionDid.Add_Click({
         $username = $textBoxMentionDid.Text
-        $mentionDid = Get-BskyAccountDid -Username $username
+        $mentionDid = Get-BskyAccountDid -AccountName $username
         $textBoxMentionDid.Text = $mentionDid
     })
 $form.Controls.Add($buttonGetMentionDid)
@@ -143,13 +144,13 @@ $labelUsernameText.Location = New-Object System.Drawing.Point(10, 140)
 $form.Controls.Add($labelUsernameText)
 
 $textBoxUsernameText = New-Object System.Windows.Forms.TextBox
-$textBoxUsernameText.Location = New-Object System.Drawing.Point(100, 140)
+$textBoxUsernameText.Location = New-Object System.Drawing.Point(120, 140) # Moved to the right
 $textBoxUsernameText.Size = New-Object System.Drawing.Size(400, 20)
 $form.Controls.Add($textBoxUsernameText)
 
 $buttonAddMention = New-Object System.Windows.Forms.Button
 $buttonAddMention.Text = "Add Mention"
-$buttonAddMention.Location = New-Object System.Drawing.Point(10, 170)
+$buttonAddMention.Location = New-Object System.Drawing.Point(120, 170) # Moved to the right
 $buttonAddMention.Add_Click({
         $mention = FunkyFacetLink -Text $textBoxUsernameText.Text -did $textBoxMentionDid.Text -Message $textBoxPostText.Text -FacetType mention
         $facets += $mention
@@ -163,7 +164,7 @@ $labelPostTagText.Location = New-Object System.Drawing.Point(10, 200)
 $form.Controls.Add($labelPostTagText)
 
 $textBoxPostTagText = New-Object System.Windows.Forms.TextBox
-$textBoxPostTagText.Location = New-Object System.Drawing.Point(100, 200)
+$textBoxPostTagText.Location = New-Object System.Drawing.Point(120, 200) # Moved to the right
 $textBoxPostTagText.Size = New-Object System.Drawing.Size(400, 20)
 $form.Controls.Add($textBoxPostTagText)
 
@@ -173,13 +174,13 @@ $labelBckGrndTagName.Location = New-Object System.Drawing.Point(10, 230)
 $form.Controls.Add($labelBckGrndTagName)
 
 $textBoxBckGrndTagName = New-Object System.Windows.Forms.TextBox
-$textBoxBckGrndTagName.Location = New-Object System.Drawing.Point(100, 230)
+$textBoxBckGrndTagName.Location = New-Object System.Drawing.Point(120, 230) # Moved to the right
 $textBoxBckGrndTagName.Size = New-Object System.Drawing.Size(400, 20)
 $form.Controls.Add($textBoxBckGrndTagName)
 
 $buttonAddTag = New-Object System.Windows.Forms.Button
 $buttonAddTag.Text = "Add Tag"
-$buttonAddTag.Location = New-Object System.Drawing.Point(10, 260)
+$buttonAddTag.Location = New-Object System.Drawing.Point(120, 260) # Moved to the right
 $buttonAddTag.Add_Click({
         $tagFacet = FunkyFacetLink -Text $textBoxPostTagText.Text -Message $textBoxPostText.Text -FacetType tag -Tag $textBoxBckGrndTagName.Text
         $facets += $tagFacet
@@ -189,7 +190,7 @@ $form.Controls.Add($buttonAddTag)
 # Post Button
 $buttonPost = New-Object System.Windows.Forms.Button
 $buttonPost.Text = "Post"
-$buttonPost.Location = New-Object System.Drawing.Point(10, 290)
+$buttonPost.Location = New-Object System.Drawing.Point(120, 290) # Moved to the right
 $buttonPost.Add_Click({
         $apiUrl = $textBoxApiUrl.Text
         $did = $textBoxDid.Text
