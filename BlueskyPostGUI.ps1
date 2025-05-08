@@ -152,12 +152,13 @@ function Show-BskyPostGui {
     # Facets array for session
     $global:facets = @()
 
+    # Use a scriptblock for facet list refresh (fixes nested function issue)
     $RefreshFacetList = {
         $addedFacetsList.Items.Clear()
         $i = 0
         foreach ($f in $global:facets) {
-            $type = $f.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
-            $desc = "[$i] $type: "
+            $type = $f.features[0].'$type' -replace 'app.bsky.richtext.facet#',''
+            $desc = "[$i] ${type}: "
             switch ($type) {
                 'mention' { $desc += $($f.features[0].did) }
                 'tag' { $desc += $($f.features[0].tag) }
@@ -171,56 +172,56 @@ function Show-BskyPostGui {
 
     # Add Mention Facet event
     $addMentionBtn.Add_Click({
-            $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
-            if ($facet) { $global:facets += $facet }
-            & $RefreshFacetList
-        })
+        $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
+        if ($facet) { $global:facets += $facet }
+        & $RefreshFacetList
+    })
     # Add Tag Facet event
     $addTagBtn.Add_Click({
-            $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
-            if ($facet) { $global:facets += $facet }
-            & $RefreshFacetList
-        })
+        $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
+        if ($facet) { $global:facets += $facet }
+        & $RefreshFacetList
+    })
     # Add Link Facet event
     $addLinkBtn.Add_Click({
-            $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
-            if ($facet) { $global:facets += $facet }
-            & $RefreshFacetList
-        })
+        $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
+        if ($facet) { $global:facets += $facet }
+        & $RefreshFacetList
+    })
 
     # Remove Facet event
     $removeFacetBtn.Add_Click({
-            $idx = $addedFacetsList.SelectedIndex
-            if ($idx -ge 0) {
-                $global:facets = $global:facets[0..($idx - 1)] + $global:facets[($idx + 1)..($global:facets.Count - 1)]
-                & $RefreshFacetList
-            }
-        })
+        $idx = $addedFacetsList.SelectedIndex
+        if ($idx -ge 0) {
+            $global:facets = $global:facets[0..($idx-1)] + $global:facets[($idx+1)..($global:facets.Count-1)]
+            & $RefreshFacetList
+        }
+    })
 
     # Edit Facet event
     $editFacetBtn.Add_Click({
-            $idx = $addedFacetsList.SelectedIndex
-            if ($idx -ge 0) {
-                $facet = $global:facets[$idx]
-                $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
-                switch ($type) {
-                    'mention' {
-                        $mentionTextBox.Text = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
-                        $mentionDidBox.Text = $facet.features[0].did
-                    }
-                    'tag' {
-                        $tagTextBox.Text = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
-                        $tagNameBox.Text = $facet.features[0].tag
-                    }
-                    'link' {
-                        $linkTextBox.Text = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
-                        $linkUriBox.Text = $facet.features[0].uri
-                    }
+        $idx = $addedFacetsList.SelectedIndex
+        if ($idx -ge 0) {
+            $facet = $global:facets[$idx]
+            $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#',''
+            switch ($type) {
+                'mention' {
+                    $mentionTextBox.Text = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+                    $mentionDidBox.Text = $facet.features[0].did
                 }
-                $global:facets = $global:facets[0..($idx - 1)] + $global:facets[($idx + 1)..($global:facets.Count - 1)]
-                & $RefreshFacetList
+                'tag' {
+                    $tagTextBox.Text = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+                    $tagNameBox.Text = $facet.features[0].tag
+                }
+                'link' {
+                    $linkTextBox.Text = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+                    $linkUriBox.Text = $facet.features[0].uri
+                }
             }
-        })
+            $global:facets = $global:facets[0..($idx-1)] + $global:facets[($idx+1)..($global:facets.Count-1)]
+            & $RefreshFacetList
+        }
+    })
 
     # Preview area
     $previewLabel = New-Object Windows.Controls.TextBlock
@@ -248,14 +249,14 @@ function Show-BskyPostGui {
 
     # Preview click event
     $previewBtn.Add_Click({
-            $postObj = New-BskyPostObject -Text $postBox.Text -Facets $global:facets
-            $previewBox.Text = Preview-BskyPost -PostObject $postObj
-        })
+        $postObj = New-BskyPostObject -Text $postBox.Text -Facets $global:facets
+        $previewBox.Text = Preview-BskyPost -PostObject $postObj
+    })
 
     # Post click event
     $postBtn.Add_Click({
-            [System.Windows.MessageBox]::Show('Posting not yet implemented. Use Preview for now.')
-        })
+        [System.Windows.MessageBox]::Show('Posting not yet implemented. Use Preview for now.')
+    })
 
     $window.ShowDialog() | Out-Null
 }
