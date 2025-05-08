@@ -36,7 +36,34 @@ function Show-BskyPostGui {
     $vaultBtn.Content = 'Get from Vault'
     $vaultBtn.Margin = '0,0,0,10'
     $stack.Children.Add($vaultBtn)
-    # TODO: Add click event for vaultBtn to retrieve credentials from vault
+
+    # Store credentials for session
+    $script:bskyCreds = $null
+
+    # Vault button event
+    $vaultBtn.Add_Click({
+            $script:bskyCreds = Get-BskyCredentials -FromVault
+            if ($script:bskyCreds) {
+                $userBox.Text = $script:bskyCreds.UserName
+                $passBox.Password = $script:bskyCreds.GetNetworkCredential().Password
+                [System.Windows.MessageBox]::Show('Credentials loaded from vault.')
+            }
+            else {
+                [System.Windows.MessageBox]::Show('Could not load credentials from vault.')
+            }
+        })
+
+    # Manual entry: update creds on focus lost
+    $userBox.Add_LostFocus({
+            if ($userBox.Text -and $passBox.Password) {
+                $script:bskyCreds = New-Object System.Management.Automation.PSCredential($userBox.Text, (ConvertTo-SecureString $passBox.Password -AsPlainText -Force))
+            }
+        })
+    $passBox.Add_LostFocus({
+            if ($userBox.Text -and $passBox.Password) {
+                $script:bskyCreds = New-Object System.Management.Automation.PSCredential($userBox.Text, (ConvertTo-SecureString $passBox.Password -AsPlainText -Force))
+            }
+        })
 
     # Post text
     $postLabel = New-Object Windows.Controls.TextBlock
@@ -81,6 +108,26 @@ function Show-BskyPostGui {
     $addMentionBtn.Content = 'Add Mention Facet'
     $mentionPanel.Children.Add($addMentionBtn)
     $stack.Children.Add($mentionGroup)
+
+    # Mention Get DID button event
+    $getDidBtn.Add_Click({
+            $username = $mentionTextBox.Text
+            if ($username) {
+                try {
+                    $did = Find-BskyUserDid -Username $username
+                    if ($did) {
+                        $mentionDidBox.Text = $did
+                        [System.Windows.MessageBox]::Show("DID found: $did")
+                    }
+                    else {
+                        [System.Windows.MessageBox]::Show('Could not find DID for that username.')
+                    }
+                }
+                catch {
+                    [System.Windows.MessageBox]::Show("Error finding DID: $($_.Exception.Message)")
+                }
+            }
+        })
 
     # Tag Facet
     $tagGroup = New-Object Windows.Controls.GroupBox
@@ -152,7 +199,8 @@ function Show-BskyPostGui {
     # Facets array for session
     $global:facets = @()
 
-    function Refresh-FacetList {
+    # Use a scriptblock for facet list refresh (fixes nested function issue)
+    $RefreshFacetList = {
         $addedFacetsList.Items.Clear()
         $i = 0
         foreach ($f in $global:facets) {
@@ -173,27 +221,32 @@ function Show-BskyPostGui {
     $addMentionBtn.Add_Click({
             $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
             if ($facet) { $global:facets += $facet }
-            Refresh-FacetList
+            & $RefreshFacetList
         })
     # Add Tag Facet event
     $addTagBtn.Add_Click({
             $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
             if ($facet) { $global:facets += $facet }
-            Refresh-FacetList
+            & $RefreshFacetList
         })
     # Add Link Facet event
     $addLinkBtn.Add_Click({
             $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
             if ($facet) { $global:facets += $facet }
-            Refresh-FacetList
+            & $RefreshFacetList
         })
 
     # Remove Facet event
     $removeFacetBtn.Add_Click({
             $idx = $addedFacetsList.SelectedIndex
             if ($idx -ge 0) {
-                $global:facets = $global:facets[0..($idx - 1)] + $global:facets[($idx + 1)..($global:facets.Count - 1)]
-                Refresh-FacetList
+                if ($global:facets.Count -eq 1) {
+                    $global:facets = @()
+                }
+                else {
+                    $global:facets = $global:facets[0..($idx - 1)] + $global:facets[($idx + 1)..($global:facets.Count - 1)]
+                }
+                & $RefreshFacetList
             }
         })
 
@@ -217,9 +270,13 @@ function Show-BskyPostGui {
                         $linkUriBox.Text = $facet.features[0].uri
                     }
                 }
-                # Remove the facet so user can re-add after editing
-                $global:facets = $global:facets[0..($idx - 1)] + $global:facets[($idx + 1)..($global:facets.Count - 1)]
-                Refresh-FacetList
+                if ($global:facets.Count -eq 1) {
+                    $global:facets = @()
+                }
+                else {
+                    $global:facets = $global:facets[0..($idx - 1)] + $global:facets[($idx + 1)..($global:facets.Count - 1)]
+                }
+                & $RefreshFacetList
             }
         })
 
@@ -255,7 +312,17 @@ function Show-BskyPostGui {
 
     # Post click event
     $postBtn.Add_Click({
-            [System.Windows.MessageBox]::Show('Posting not yet implemented. Use Preview for now.')
+            if (-not $script:bskyCreds) {
+                $script:bskyCreds = New-Object System.Management.Automation.PSCredential($userBox.Text, (ConvertTo-SecureString $passBox.Password -AsPlainText -Force))
+            }
+            $postObj = New-BskyPostObject -Text $postBox.Text -Facets $global:facets
+            try {
+                $result = Publish-BskyPost -PostObject $postObj -Credentials $script:bskyCreds
+                [System.Windows.MessageBox]::Show('Post sent successfully!')
+            }
+            catch {
+                [System.Windows.MessageBox]::Show("Error posting: $($_.Exception.Message)")
+            }
         })
 
     $window.ShowDialog() | Out-Null
