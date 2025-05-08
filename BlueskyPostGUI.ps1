@@ -49,14 +49,117 @@ function Show-BskyPostGui {
     $postBox.Margin = '0,0,0,10'
     $stack.Children.Add($postBox)
 
-    # Facet management (simple for now)
+    # Facet management UI
     $facetLabel = New-Object Windows.Controls.TextBlock
-    $facetLabel.Text = 'Facets (mention/tag/link):'
+    $facetLabel.Text = 'Facets:'
+    $facetLabel.FontWeight = 'Bold'
+    $facetLabel.Margin = '0,10,0,0'
     $stack.Children.Add($facetLabel)
-    $facetBox = New-Object Windows.Controls.TextBox
-    $facetBox.ToolTip = 'Describe facets here or use future facet GUI'
-    $facetBox.Margin = '0,0,0,10'
-    $stack.Children.Add($facetBox)
+
+    # Mention Facet
+    $mentionGroup = New-Object Windows.Controls.GroupBox
+    $mentionGroup.Header = 'Mention Facet'
+    $mentionPanel = New-Object Windows.Controls.StackPanel
+    $mentionGroup.Content = $mentionPanel
+    $mentionTextLabel = New-Object Windows.Controls.TextBlock
+    $mentionTextLabel.Text = 'Mention Text (from Post Text):'
+    $mentionPanel.Children.Add($mentionTextLabel)
+    $mentionTextBox = New-Object Windows.Controls.TextBox
+    $mentionTextBox.Margin = '0,0,0,5'
+    $mentionPanel.Children.Add($mentionTextBox)
+    $mentionDidLabel = New-Object Windows.Controls.TextBlock
+    $mentionDidLabel.Text = 'Mention DID:'
+    $mentionPanel.Children.Add($mentionDidLabel)
+    $mentionDidBox = New-Object Windows.Controls.TextBox
+    $mentionDidBox.Margin = '0,0,0,5'
+    $mentionPanel.Children.Add($mentionDidBox)
+    $getDidBtn = New-Object Windows.Controls.Button
+    $getDidBtn.Content = 'Get DID'
+    $getDidBtn.Margin = '0,0,0,5'
+    $mentionPanel.Children.Add($getDidBtn)
+    $addMentionBtn = New-Object Windows.Controls.Button
+    $addMentionBtn.Content = 'Add Mention Facet'
+    $mentionPanel.Children.Add($addMentionBtn)
+    $stack.Children.Add($mentionGroup)
+
+    # Tag Facet
+    $tagGroup = New-Object Windows.Controls.GroupBox
+    $tagGroup.Header = 'Tag Facet'
+    $tagPanel = New-Object Windows.Controls.StackPanel
+    $tagGroup.Content = $tagPanel
+    $tagTextLabel = New-Object Windows.Controls.TextBlock
+    $tagTextLabel.Text = 'Tag Text (from Post Text):'
+    $tagPanel.Children.Add($tagTextLabel)
+    $tagTextBox = New-Object Windows.Controls.TextBox
+    $tagTextBox.Margin = '0,0,0,5'
+    $tagPanel.Children.Add($tagTextBox)
+    $tagNameLabel = New-Object Windows.Controls.TextBlock
+    $tagNameLabel.Text = 'Tag Name (one word):'
+    $tagPanel.Children.Add($tagNameLabel)
+    $tagNameBox = New-Object Windows.Controls.TextBox
+    $tagNameBox.Margin = '0,0,0,5'
+    $tagPanel.Children.Add($tagNameBox)
+    $addTagBtn = New-Object Windows.Controls.Button
+    $addTagBtn.Content = 'Add Tag Facet'
+    $tagPanel.Children.Add($addTagBtn)
+    $stack.Children.Add($tagGroup)
+
+    # Link Facet
+    $linkGroup = New-Object Windows.Controls.GroupBox
+    $linkGroup.Header = 'Link Facet'
+    $linkPanel = New-Object Windows.Controls.StackPanel
+    $linkGroup.Content = $linkPanel
+    $linkTextLabel = New-Object Windows.Controls.TextBlock
+    $linkTextLabel.Text = 'Link Text (from Post Text):'
+    $linkPanel.Children.Add($linkTextLabel)
+    $linkTextBox = New-Object Windows.Controls.TextBox
+    $linkTextBox.Margin = '0,0,0,5'
+    $linkPanel.Children.Add($linkTextBox)
+    $linkUriLabel = New-Object Windows.Controls.TextBlock
+    $linkUriLabel.Text = 'Link URI:'
+    $linkPanel.Children.Add($linkUriLabel)
+    $linkUriBox = New-Object Windows.Controls.TextBox
+    $linkUriBox.Margin = '0,0,0,5'
+    $linkPanel.Children.Add($linkUriBox)
+    $addLinkBtn = New-Object Windows.Controls.Button
+    $addLinkBtn.Content = 'Add Link Facet'
+    $linkPanel.Children.Add($addLinkBtn)
+    $stack.Children.Add($linkGroup)
+
+    # Facets added display
+    $addedFacetsLabel = New-Object Windows.Controls.TextBlock
+    $addedFacetsLabel.Text = 'Facets Added:'
+    $addedFacetsLabel.FontWeight = 'Bold'
+    $addedFacetsLabel.Margin = '0,10,0,0'
+    $stack.Children.Add($addedFacetsLabel)
+    $addedFacetsBox = New-Object Windows.Controls.TextBox
+    $addedFacetsBox.Height = 60
+    $addedFacetsBox.IsReadOnly = $true
+    $addedFacetsBox.TextWrapping = 'Wrap'
+    $addedFacetsBox.Margin = '0,0,0,10'
+    $stack.Children.Add($addedFacetsBox)
+
+    # Facets array for session
+    $global:facets = @()
+
+    # Add Mention Facet event
+    $addMentionBtn.Add_Click({
+            $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
+            if ($facet) { $global:facets += $facet }
+            $addedFacetsBox.Text = ($global:facets | ConvertTo-Json -Depth 5)
+        })
+    # Add Tag Facet event
+    $addTagBtn.Add_Click({
+            $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
+            if ($facet) { $global:facets += $facet }
+            $addedFacetsBox.Text = ($global:facets | ConvertTo-Json -Depth 5)
+        })
+    # Add Link Facet event
+    $addLinkBtn.Add_Click({
+            $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
+            if ($facet) { $global:facets += $facet }
+            $addedFacetsBox.Text = ($global:facets | ConvertTo-Json -Depth 5)
+        })
 
     # Preview area
     $previewLabel = New-Object Windows.Controls.TextBlock
@@ -84,8 +187,7 @@ function Show-BskyPostGui {
 
     # Preview click event
     $previewBtn.Add_Click({
-            $facets = @() # TODO: Parse $facetBox.Text into facet objects
-            $postObj = New-BskyPostObject -Text $postBox.Text -Facets $facets
+            $postObj = New-BskyPostObject -Text $postBox.Text -Facets $global:facets
             $previewBox.Text = Preview-BskyPost -PostObject $postObj
         })
 
