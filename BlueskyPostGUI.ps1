@@ -31,6 +31,13 @@ function Show-BskyPostGui {
     $passBox.ToolTip = 'App Password'
     $stack.Children.Add($passBox)
 
+    # Get from Vault button
+    $vaultBtn = New-Object Windows.Controls.Button
+    $vaultBtn.Content = 'Get from Vault'
+    $vaultBtn.Margin = '0,0,0,10'
+    $stack.Children.Add($vaultBtn)
+    # TODO: Add click event for vaultBtn to retrieve credentials from vault
+
     # Post text
     $postLabel = New-Object Windows.Controls.TextBlock
     $postLabel.Text = 'Post Text:'
