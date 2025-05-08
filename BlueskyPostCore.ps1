@@ -2,6 +2,69 @@
 # Core logic for creating and posting Bluesky posts with custom facets
 # Requires: PSBlueSky module, FunkyFacetLink function
 
+function FunkyFacetLink {
+    # this was nabbed from PSBlueSky (_newFacetLink in helpers.ps1)
+    # https://docs.bsky.app/docs/advanced-guides/post-richtext
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory, HelpMessage = 'The Bluesky message with the links')]
+        [string]$Message,
+        [Parameter(Mandatory, HelpMessage = 'The text of the link')]
+        [string]$Text,
+        [Parameter(HelpMessage = 'The URI of the link')]
+        [string]$Uri,
+        [Parameter(HelpMessage = 'The DID of the mention')]
+        [string]$DiD,
+        [Parameter(HelpMessage = 'The Tag text')]
+        [string]$Tag,
+        [ValidateSet('link', 'mention', 'tag')]
+        [string]$FacetType = 'link'
+    )
+
+    $PSDefaultParameterValues['_verbose:block'] = 'PRIVATE'
+    $feature = Switch ($FacetType) {
+        'link' {
+            [PSCustomObject]@{
+                '$type' = 'app.bsky.richtext.facet#link'
+                uri     = $Uri
+            }
+        }
+        'mention' {
+            [PSCustomObject]@{
+                '$type' = 'app.bsky.richtext.facet#mention'
+                did     = $DiD
+            }
+        }
+        'tag' {
+            [PSCustomObject]@{
+                '$type' = 'app.bsky.richtext.facet#tag'
+                tag     = $Tag
+            }
+        }
+    }
+
+    if ($text -match '\[|\]|\(\)') {
+        $text = [regex]::Escape($text)
+    }
+    #the comparison test is case-sensitive
+    if (([regex]$Text).IsMatch($Message)) {
+        #properties of the facet object are also case-sensitive
+        $m = ([regex]$Text).match($Message)
+        [PSCustomObject]@{
+            index    = [ordered]@{
+                byteStart = $m.index
+                byteEnd   = ($m.length) + ($m.index)
+            }
+            features = @(
+                $feature
+            )
+        }
+    }
+    else {
+        Write-Warning ("Text not found: $Text in $Message")
+    }
+}
+
 function Get-BskyCredentials {
     param(
         [switch]$FromVault
