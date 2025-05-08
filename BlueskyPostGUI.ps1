@@ -11,7 +11,7 @@ function Show-BskyPostGui {
     $window = New-Object Windows.Window
     $window.Title = 'Bluesky Post Creator'
     $window.Width = 600
-    $window.Height = 700
+    $window.Height = 900  # Increased height for more space
     $window.WindowStartupLocation = 'CenterScreen'
 
     # StackPanel for layout
@@ -126,39 +126,100 @@ function Show-BskyPostGui {
     $linkPanel.Children.Add($addLinkBtn)
     $stack.Children.Add($linkGroup)
 
-    # Facets added display
+    # Facets added display (now with ListBox for selection)
     $addedFacetsLabel = New-Object Windows.Controls.TextBlock
     $addedFacetsLabel.Text = 'Facets Added:'
     $addedFacetsLabel.FontWeight = 'Bold'
     $addedFacetsLabel.Margin = '0,10,0,0'
     $stack.Children.Add($addedFacetsLabel)
-    $addedFacetsBox = New-Object Windows.Controls.TextBox
-    $addedFacetsBox.Height = 60
-    $addedFacetsBox.IsReadOnly = $true
-    $addedFacetsBox.TextWrapping = 'Wrap'
-    $addedFacetsBox.Margin = '0,0,0,10'
-    $stack.Children.Add($addedFacetsBox)
+    $addedFacetsList = New-Object Windows.Controls.ListBox
+    $addedFacetsList.Height = 120
+    $addedFacetsList.Margin = '0,0,0,10'
+    $stack.Children.Add($addedFacetsList)
+
+    # Edit/Remove buttons
+    $facetBtnPanel = New-Object Windows.Controls.StackPanel
+    $facetBtnPanel.Orientation = 'Horizontal'
+    $removeFacetBtn = New-Object Windows.Controls.Button
+    $removeFacetBtn.Content = 'Remove Selected Facet'
+    $removeFacetBtn.Margin = '0,0,10,0'
+    $editFacetBtn = New-Object Windows.Controls.Button
+    $editFacetBtn.Content = 'Edit Selected Facet'
+    $facetBtnPanel.Children.Add($removeFacetBtn)
+    $facetBtnPanel.Children.Add($editFacetBtn)
+    $stack.Children.Add($facetBtnPanel)
 
     # Facets array for session
     $global:facets = @()
+
+    $RefreshFacetList = {
+        $addedFacetsList.Items.Clear()
+        $i = 0
+        foreach ($f in $global:facets) {
+            $type = $f.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
+            $desc = "[$i] $type: "
+            switch ($type) {
+                'mention' { $desc += $($f.features[0].did) }
+                'tag' { $desc += $($f.features[0].tag) }
+                'link' { $desc += $($f.features[0].uri) }
+            }
+            $desc += " (Text: $($f.index.byteStart)-$($f.index.byteEnd))"
+            $addedFacetsList.Items.Add($desc)
+            $i++
+        }
+    }
 
     # Add Mention Facet event
     $addMentionBtn.Add_Click({
             $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
             if ($facet) { $global:facets += $facet }
-            $addedFacetsBox.Text = ($global:facets | ConvertTo-Json -Depth 5)
+            & $RefreshFacetList
         })
     # Add Tag Facet event
     $addTagBtn.Add_Click({
             $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
             if ($facet) { $global:facets += $facet }
-            $addedFacetsBox.Text = ($global:facets | ConvertTo-Json -Depth 5)
+            & $RefreshFacetList
         })
     # Add Link Facet event
     $addLinkBtn.Add_Click({
             $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
             if ($facet) { $global:facets += $facet }
-            $addedFacetsBox.Text = ($global:facets | ConvertTo-Json -Depth 5)
+            & $RefreshFacetList
+        })
+
+    # Remove Facet event
+    $removeFacetBtn.Add_Click({
+            $idx = $addedFacetsList.SelectedIndex
+            if ($idx -ge 0) {
+                $global:facets = $global:facets[0..($idx - 1)] + $global:facets[($idx + 1)..($global:facets.Count - 1)]
+                & $RefreshFacetList
+            }
+        })
+
+    # Edit Facet event
+    $editFacetBtn.Add_Click({
+            $idx = $addedFacetsList.SelectedIndex
+            if ($idx -ge 0) {
+                $facet = $global:facets[$idx]
+                $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
+                switch ($type) {
+                    'mention' {
+                        $mentionTextBox.Text = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+                        $mentionDidBox.Text = $facet.features[0].did
+                    }
+                    'tag' {
+                        $tagTextBox.Text = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+                        $tagNameBox.Text = $facet.features[0].tag
+                    }
+                    'link' {
+                        $linkTextBox.Text = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+                        $linkUriBox.Text = $facet.features[0].uri
+                    }
+                }
+                $global:facets = $global:facets[0..($idx - 1)] + $global:facets[($idx + 1)..($global:facets.Count - 1)]
+                & $RefreshFacetList
+            }
         })
 
     # Preview area
