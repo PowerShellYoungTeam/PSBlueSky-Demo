@@ -103,10 +103,10 @@ $facets += $tagFacet
 
 #Links
 
-#$linkText = "How PowerShell and the Right Mindset Can Transform Your IT Career The PS Podcast E161 Steven Wight"
-#$LinkUri = "https://www.youtube.com/watch?v=klsOxHtG3KE&list=PL1mL90yFExsjUS8DRkzfLUcHds7vlxqgM&index=1&t=83s"
+$linkText = "How PowerShell and the Right Mindset Can Transform Your IT Career The PS Podcast E161 Steven Wight"
+$LinkUri = "https://www.youtube.com/watch?v=klsOxHtG3KE&list=PL1mL90yFExsjUS8DRkzfLUcHds7vlxqgM&index=1&t=83s"
 
-#$linkFacet = FunkyFacetLink -Text $linkText -Uri $LinkUri -Message $postText -FacetType link
+$linkFacet = FunkyFacetLink -Text $linkText -Uri $LinkUri -Message $postText -FacetType link
 
 #$facets += $linkFacet
 
