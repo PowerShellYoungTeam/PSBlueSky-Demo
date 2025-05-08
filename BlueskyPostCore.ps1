@@ -67,18 +67,39 @@ function FunkyFacetLink {
 
 function Get-BskyCredentials {
     param(
-        [switch]$FromVault
+        [switch]$FromVault,
+        [string]$VaultName = 'PowerShell',
+        [string]$SecretName = 'BlueSky'
     )
-    # TODO: Implement credential retrieval (from user input or vault)
-    throw 'Not implemented: Get-BskyCredentials'
+    if ($FromVault) {
+        if (Get-Command Get-Secret -ErrorAction SilentlyContinue) {
+            try {
+                return Get-Secret -Vault $VaultName -Name $SecretName
+            }
+            catch {
+                Write-Warning "Could not retrieve secret from vault. Falling back to manual entry."
+            }
+        }
+        else {
+            Write-Warning "SecretManagement module not available. Falling back to manual entry."
+        }
+    }
+    # Manual entry fallback
+    return Get-Credential -Message "Enter your BlueSky credentials"
 }
 
 function Find-BskyUserDid {
     param(
         [string]$Username
     )
-    # TODO: Implement user DID lookup using PSBlueSky
-    throw 'Not implemented: Find-BskyUserDid'
+    $user = Find-BskyUser -UserName $Username | Select-Object -First 1
+    if ($user -and $user.Did) {
+        return $user.Did
+    }
+    else {
+        Write-Warning "User not found or DID not available."
+        return $null
+    }
 }
 
 function New-BskyFacet {
@@ -117,10 +138,16 @@ function Preview-BskyPost {
 function Publish-BskyPost {
     param(
         [hashtable]$PostObject,
-        [hashtable]$Credentials
+        [pscredential]$Credentials
     )
-    # TODO: Implement post using PSBlueSky
-    throw 'Not implemented: Publish-BskyPost'
+    # Start session if not already started
+    $session = Get-BskySession -ErrorAction SilentlyContinue
+    if (-not $session) {
+        Start-BskySession -Credential $Credentials | Out-Null
+    }
+    # Post using PSBluesky
+    $result = New-BskyPost -Message $PostObject['text'] -Facets $PostObject['facets']
+    return $result
 }
 
 function Open-BskyPostInBrowser {
