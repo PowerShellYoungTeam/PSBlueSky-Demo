@@ -145,10 +145,28 @@ function Publish-BskyPost {
     if (-not $session) {
         Start-BskySession -Credential $Credentials | Out-Null
     }
-    # Post using PSBluesky
-    $result = New-BskyPost -Message $PostObject['text'] -Facets $PostObject['facets']
-    return $result
+    # Post using PSBluesky this is wrong see end of hellobskypost, invoke the API directly
+    $apiUrl = "https://bsky.social/xrpc/com.atproto.repo.createRecord"
+    $did = $Credentials.UserName
+    $body = @{
+        repo       = $did
+        collection = 'app.bsky.feed.post'
+        record     = $PostObject
+    } | ConvertTo-Json -Depth 7
+    $headers = (Get-BskySession).CreateHeader()
+    $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Headers $headers -Body $body -ContentType 'application/json'
+    if ($response -and $response.uri) {
+        Write-Host "Post published successfully! URI: $($response.uri)"
+    }
+    else {
+        Write-Warning "Failed to publish post."
+    }
+    return $response
 }
+
+#    $result = New-BskyPost -Message $PostObject['text'] -Facets $PostObject['facets']
+#    return $result
+#}
 
 function Open-BskyPostInBrowser {
     param(
@@ -157,4 +175,4 @@ function Open-BskyPostInBrowser {
     Start-Process $PostUri
 }
 
-Export-ModuleMember -Function *
+#Export-ModuleMember -Function *
