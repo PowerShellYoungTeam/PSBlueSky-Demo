@@ -505,6 +505,13 @@ function Show-BskyPostGui {
             if (-not $script:bskyCreds) {
                 $script:bskyCreds = New-Object System.Management.Automation.PSCredential($userBox.Text, (ConvertTo-SecureString $passBox.Password -AsPlainText -Force))
             }
+            try {
+                # Ensure session is started before posting
+                Start-BskySession -Credential $script:bskyCreds | Out-Null
+            } catch {
+                [System.Windows.MessageBox]::Show("Error starting session: $($_.Exception.Message)")
+                return
+            }
             $postObj = New-BskyPostObject -Text $postBox.Text -Facets $global:facets
             try {
                 $result = Publish-BskyPost -PostObject $postObj -Credentials $script:bskyCreds
