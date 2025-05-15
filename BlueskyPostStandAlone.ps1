@@ -409,22 +409,32 @@ function Show-BskyPostGui {
 
     # Add Mention Facet event
     $addMentionBtn.Add_Click({
-            $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
-            if ($facet) { $global:facets += $facet }
-            & $RefreshFacetList
-        })
+        $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
+        if ($facet) { $global:facets += $facet }
+        & $RefreshFacetList
+        # Clear mention-related fields
+        $usernameBox.Text = ''
+        $mentionTextBox.Text = ''
+        $mentionDidBox.Text = ''
+    })
     # Add Tag Facet event
     $addTagBtn.Add_Click({
-            $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
-            if ($facet) { $global:facets += $facet }
-            & $RefreshFacetList
-        })
+        $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
+        if ($facet) { $global:facets += $facet }
+        & $RefreshFacetList
+        # Clear tag-related fields
+        $tagTextBox.Text = ''
+        $tagNameBox.Text = ''
+    })
     # Add Link Facet event
     $addLinkBtn.Add_Click({
-            $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
-            if ($facet) { $global:facets += $facet }
-            & $RefreshFacetList
-        })
+        $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
+        if ($facet) { $global:facets += $facet }
+        & $RefreshFacetList
+        # Clear link-related fields
+        $linkTextBox.Text = ''
+        $linkUriBox.Text = ''
+    })
 
     # Remove Facet event
     $removeFacetBtn.Add_Click({
@@ -470,7 +480,7 @@ function Show-BskyPostGui {
             }
         })
 
-    # When a facet is selected, show its details in the relevant input fields
+    # When a facet is selected, show its details in the relevant input fields and clear others
     $addedFacetsList.Add_SelectionChanged({
         $idx = $addedFacetsList.SelectedIndex
         if ($idx -ge 0 -and $global:facets.Count -gt $idx) {
@@ -481,16 +491,33 @@ function Show-BskyPostGui {
                 'mention' {
                     $mentionTextBox.Text = $facetText
                     $mentionDidBox.Text = $facet.features[0].did
+                    # Clear tag and link fields
+                    $tagTextBox.Text = ''
+                    $tagNameBox.Text = ''
+                    $linkTextBox.Text = ''
+                    $linkUriBox.Text = ''
                 }
                 'tag' {
                     $tagTextBox.Text = $facetText
                     $tagNameBox.Text = $facet.features[0].tag
+                    # Clear mention and link fields
+                    $mentionTextBox.Text = ''
+                    $mentionDidBox.Text = ''
+                    $linkTextBox.Text = ''
+                    $linkUriBox.Text = ''
                 }
                 'link' {
                     $linkTextBox.Text = $facetText
                     $linkUriBox.Text = $facet.features[0].uri
+                    # Clear mention and tag fields
+                    $mentionTextBox.Text = ''
+                    $mentionDidBox.Text = ''
+                    $tagTextBox.Text = ''
+                    $tagNameBox.Text = ''
                 }
             }
+            # Always clear the usernameBox (Bluesky Username field)
+            $usernameBox.Text = ''
         }
     })
 
