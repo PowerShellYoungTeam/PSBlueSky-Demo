@@ -470,6 +470,30 @@ function Show-BskyPostGui {
             }
         })
 
+    # When a facet is selected, show its details in the relevant input fields
+    $addedFacetsList.Add_SelectionChanged({
+        $idx = $addedFacetsList.SelectedIndex
+        if ($idx -ge 0 -and $global:facets.Count -gt $idx) {
+            $facet = $global:facets[$idx]
+            $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
+            $facetText = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+            switch ($type) {
+                'mention' {
+                    $mentionTextBox.Text = $facetText
+                    $mentionDidBox.Text = $facet.features[0].did
+                }
+                'tag' {
+                    $tagTextBox.Text = $facetText
+                    $tagNameBox.Text = $facet.features[0].tag
+                }
+                'link' {
+                    $linkTextBox.Text = $facetText
+                    $linkUriBox.Text = $facet.features[0].uri
+                }
+            }
+        }
+    })
+
     # Preview area
     $previewLabel = New-Object Windows.Controls.TextBlock
     $previewLabel.Text = 'Preview:'
