@@ -221,16 +221,28 @@ function Show-BskyPostGui {
     # Store credentials for session
     $script:bskyCreds = $null
 
-    # Vault button event
+    # Vault button event: Console-based vault/secret picker
     $vaultBtn.Add_Click({
-            $script:bskyCreds = Get-BskyCredentials -FromVault
-            if ($script:bskyCreds) {
-                $userBox.Text = $script:bskyCreds.UserName
-                $passBox.Password = $script:bskyCreds.GetNetworkCredential().Password
+
+            # Prompt for Secret Name
+            $secretName = Read-Host -Prompt 'Enter the Secret Name (e.g., BlueSky)'
+
+            # Get the secret
+            try {
+                $cred = $cred = Get-Secret -Name $secretName -Verbose
+            }
+            catch {
+                [System.Windows.MessageBox]::Show('Could not retrieve secret from vault.')
+                return
+            }
+            if ($cred -and $cred -is [System.Management.Automation.PSCredential]) {
+                $userBox.Text = $cred.UserName
+                $passBox.Password = $cred.GetNetworkCredential().Password
+                $script:bskyCreds = $cred
                 [System.Windows.MessageBox]::Show('Credentials loaded from vault.')
             }
             else {
-                [System.Windows.MessageBox]::Show('Could not load credentials from vault.')
+                [System.Windows.MessageBox]::Show('Vault did not return a valid credential. Ensure the secret is a PSCredential object.')
             }
         })
 
@@ -259,29 +271,30 @@ function Show-BskyPostGui {
 
     # Warn if changing post text breaks any facet
     $postBox.Add_LostFocus({
-        $brokenFacets = @()
-        $i = 0
-        foreach ($facet in $global:facets) {
-            $facetText = $null
-            try {
-                $facetText = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
-            } catch {}
-            $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
-            $expected = switch ($type) {
-                'mention' { $facet.features[0].did }
-                'tag' { $facet.features[0].tag }
-                'link' { $facet.features[0].uri }
+            $brokenFacets = @()
+            $i = 0
+            foreach ($facet in $global:facets) {
+                $facetText = $null
+                try {
+                    $facetText = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+                }
+                catch {}
+                $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
+                $expected = switch ($type) {
+                    'mention' { $facet.features[0].did }
+                    'tag' { $facet.features[0].tag }
+                    'link' { $facet.features[0].uri }
+                }
+                # If substring fails or doesn't match original facet text, mark as broken
+                if (-not $facetText -or ($type -eq 'mention' -and $facetText -ne $mentionTextBox.Text) -or ($type -eq 'tag' -and $facetText -ne $tagTextBox.Text) -or ($type -eq 'link' -and $facetText -ne $linkTextBox.Text)) {
+                    $brokenFacets += $i
+                }
+                $i++
             }
-            # If substring fails or doesn't match original facet text, mark as broken
-            if (-not $facetText -or ($type -eq 'mention' -and $facetText -ne $mentionTextBox.Text) -or ($type -eq 'tag' -and $facetText -ne $tagTextBox.Text) -or ($type -eq 'link' -and $facetText -ne $linkTextBox.Text)) {
-                $brokenFacets += $i
+            if ($brokenFacets.Count -gt 0) {
+                [System.Windows.MessageBox]::Show("Warning: Changing the post text may have broken one or more facets. Please review and re-add any affected facets.", "Facet Warning", 'OK', 'Warning')
             }
-            $i++
-        }
-        if ($brokenFacets.Count -gt 0) {
-            [System.Windows.MessageBox]::Show("Warning: Changing the post text may have broken one or more facets. Please review and re-add any affected facets.", "Facet Warning", 'OK', 'Warning')
-        }
-    })
+        })
 
     # Facet management UI
     $facetLabel = New-Object Windows.Controls.TextBlock
@@ -458,162 +471,168 @@ function Show-BskyPostGui {
     $facetBtnPanel.Children.Add($CancelEditBtn)
 
     $CancelEditBtn.Add_Click({
-        & $ResetFacetInputs
-        $addedFacetsList.SelectedIndex = -1
-    })
+            & $ResetFacetInputs
+            $addedFacetsList.SelectedIndex = -1
+        })
 
     # Add Mention Facet event (now handles edit mode)
     $addMentionBtn.Add_Click({
-        if ($global:editingFacetIndex -ge 0) {
-            # Save changes to existing facet
-            $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
-            if ($facet) {
-                $global:facets[$global:editingFacetIndex] = $facet
-                & $RefreshFacetList
-                & $ResetFacetInputs
-                $addedFacetsList.SelectedIndex = -1
-            } else {
-                [System.Windows.MessageBox]::Show('Mention text not found in post text. Please ensure the mention text exists in the post.')
+            if ($global:editingFacetIndex -ge 0) {
+                # Save changes to existing facet
+                $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
+                if ($facet) {
+                    $global:facets[$global:editingFacetIndex] = $facet
+                    & $RefreshFacetList
+                    & $ResetFacetInputs
+                    $addedFacetsList.SelectedIndex = -1
+                }
+                else {
+                    [System.Windows.MessageBox]::Show('Mention text not found in post text. Please ensure the mention text exists in the post.')
+                }
             }
-        } else {
-            $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
-            if ($facet) { $global:facets += $facet }
-            & $RefreshFacetList
-            # Clear mention-related fields
-            $usernameBox.Text = ''
-            $mentionTextBox.Text = ''
-            $mentionDidBox.Text = ''
-        }
-    })
+            else {
+                $facet = New-BskyFacet -Type 'mention' -Text $mentionTextBox.Text -Message $postBox.Text -Did $mentionDidBox.Text
+                if ($facet) { $global:facets += $facet }
+                & $RefreshFacetList
+                # Clear mention-related fields
+                $usernameBox.Text = ''
+                $mentionTextBox.Text = ''
+                $mentionDidBox.Text = ''
+            }
+        })
     # Add Tag Facet event (now handles edit mode)
     $addTagBtn.Add_Click({
-        if ($global:editingFacetIndex -ge 0) {
-            $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
-            if ($facet) {
-                $global:facets[$global:editingFacetIndex] = $facet
-                & $RefreshFacetList
-                & $ResetFacetInputs
-                $addedFacetsList.SelectedIndex = -1
-            } else {
-                [System.Windows.MessageBox]::Show('Tag text not found in post text. Please ensure the tag text exists in the post.')
+            if ($global:editingFacetIndex -ge 0) {
+                $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
+                if ($facet) {
+                    $global:facets[$global:editingFacetIndex] = $facet
+                    & $RefreshFacetList
+                    & $ResetFacetInputs
+                    $addedFacetsList.SelectedIndex = -1
+                }
+                else {
+                    [System.Windows.MessageBox]::Show('Tag text not found in post text. Please ensure the tag text exists in the post.')
+                }
             }
-        } else {
-            $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
-            if ($facet) { $global:facets += $facet }
-            & $RefreshFacetList
-            # Clear tag-related fields
-            $tagTextBox.Text = ''
-            $tagNameBox.Text = ''
-        }
-    })
+            else {
+                $facet = New-BskyFacet -Type 'tag' -Text $tagTextBox.Text -Message $postBox.Text -Tag $tagNameBox.Text
+                if ($facet) { $global:facets += $facet }
+                & $RefreshFacetList
+                # Clear tag-related fields
+                $tagTextBox.Text = ''
+                $tagNameBox.Text = ''
+            }
+        })
     # Add Link Facet event (now handles edit mode)
     $addLinkBtn.Add_Click({
-        if ($global:editingFacetIndex -ge 0) {
-            $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
-            if ($facet) {
-                $global:facets[$global:editingFacetIndex] = $facet
-                & $RefreshFacetList
-                & $ResetFacetInputs
-                $addedFacetsList.SelectedIndex = -1
-            } else {
-                [System.Windows.MessageBox]::Show('Link text not found in post text. Please ensure the link text exists in the post.')
+            if ($global:editingFacetIndex -ge 0) {
+                $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
+                if ($facet) {
+                    $global:facets[$global:editingFacetIndex] = $facet
+                    & $RefreshFacetList
+                    & $ResetFacetInputs
+                    $addedFacetsList.SelectedIndex = -1
+                }
+                else {
+                    [System.Windows.MessageBox]::Show('Link text not found in post text. Please ensure the link text exists in the post.')
+                }
             }
-        } else {
-            $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
-            if ($facet) { $global:facets += $facet }
-            & $RefreshFacetList
-            # Clear link-related fields
-            $linkTextBox.Text = ''
-            $linkUriBox.Text = ''
-        }
-    })
+            else {
+                $facet = New-BskyFacet -Type 'link' -Text $linkTextBox.Text -Message $postBox.Text -Uri $linkUriBox.Text
+                if ($facet) { $global:facets += $facet }
+                & $RefreshFacetList
+                # Clear link-related fields
+                $linkTextBox.Text = ''
+                $linkUriBox.Text = ''
+            }
+        })
 
     # Remove Facet event
     $removeFacetBtn.Add_Click({
-        $idx = $addedFacetsList.SelectedIndex
-        if ($idx -ge 0 -and $global:facets.Count -gt $idx) {
-            $global:facets = @($global:facets | Where-Object { $_ -ne $global:facets[$idx] })
-            & $RefreshFacetList
-            $addedFacetsList.SelectedIndex = -1
-            & $ResetFacetInputs
-        }
-    })
+            $idx = $addedFacetsList.SelectedIndex
+            if ($idx -ge 0 -and $global:facets.Count -gt $idx) {
+                $global:facets = @($global:facets | Where-Object { $_ -ne $global:facets[$idx] })
+                & $RefreshFacetList
+                $addedFacetsList.SelectedIndex = -1
+                & $ResetFacetInputs
+            }
+        })
 
     # Edit Facet event (in-place edit)
     $editFacetBtn.Add_Click({
-        $idx = $addedFacetsList.SelectedIndex
-        if ($idx -ge 0 -and $global:facets.Count -gt $idx) {
-            $facet = $global:facets[$idx]
-            $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
-            $facetText = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
-            $global:editingFacetIndex = $idx
-            switch ($type) {
-                'mention' {
-                    $mentionTextBox.Text = $facetText
-                    $mentionDidBox.Text = $facet.features[0].did
-                    $addMentionBtn.Content = 'Save Changes'
-                    $addTagBtn.Content = 'Add Tag Facet'
-                    $addLinkBtn.Content = 'Add Link Facet'
+            $idx = $addedFacetsList.SelectedIndex
+            if ($idx -ge 0 -and $global:facets.Count -gt $idx) {
+                $facet = $global:facets[$idx]
+                $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
+                $facetText = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+                $global:editingFacetIndex = $idx
+                switch ($type) {
+                    'mention' {
+                        $mentionTextBox.Text = $facetText
+                        $mentionDidBox.Text = $facet.features[0].did
+                        $addMentionBtn.Content = 'Save Changes'
+                        $addTagBtn.Content = 'Add Tag Facet'
+                        $addLinkBtn.Content = 'Add Link Facet'
+                    }
+                    'tag' {
+                        $tagTextBox.Text = $facetText
+                        $tagNameBox.Text = $facet.features[0].tag
+                        $addTagBtn.Content = 'Save Changes'
+                        $addMentionBtn.Content = 'Add Mention Facet'
+                        $addLinkBtn.Content = 'Add Link Facet'
+                    }
+                    'link' {
+                        $linkTextBox.Text = $facetText
+                        $linkUriBox.Text = $facet.features[0].uri
+                        $addLinkBtn.Content = 'Save Changes'
+                        $addMentionBtn.Content = 'Add Mention Facet'
+                        $addTagBtn.Content = 'Add Tag Facet'
+                    }
                 }
-                'tag' {
-                    $tagTextBox.Text = $facetText
-                    $tagNameBox.Text = $facet.features[0].tag
-                    $addTagBtn.Content = 'Save Changes'
-                    $addMentionBtn.Content = 'Add Mention Facet'
-                    $addLinkBtn.Content = 'Add Link Facet'
-                }
-                'link' {
-                    $linkTextBox.Text = $facetText
-                    $linkUriBox.Text = $facet.features[0].uri
-                    $addLinkBtn.Content = 'Save Changes'
-                    $addMentionBtn.Content = 'Add Mention Facet'
-                    $addTagBtn.Content = 'Add Tag Facet'
-                }
+                $CancelEditBtn.Visibility = 'Visible'
             }
-            $CancelEditBtn.Visibility = 'Visible'
-        }
-    })
+        })
 
     # When a facet is selected, show its details in the relevant input fields and clear others
     $addedFacetsList.Add_SelectionChanged({
-        $idx = $addedFacetsList.SelectedIndex
-        if ($idx -ge 0 -and $global:facets.Count -gt $idx) {
-            $facet = $global:facets[$idx]
-            $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
-            $facetText = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
-            switch ($type) {
-                'mention' {
-                    $mentionTextBox.Text = $facetText
-                    $mentionDidBox.Text = $facet.features[0].did
-                    # Clear tag and link fields
-                    $tagTextBox.Text = ''
-                    $tagNameBox.Text = ''
-                    $linkTextBox.Text = ''
-                    $linkUriBox.Text = ''
+            $idx = $addedFacetsList.SelectedIndex
+            if ($idx -ge 0 -and $global:facets.Count -gt $idx) {
+                $facet = $global:facets[$idx]
+                $type = $facet.features[0].'$type' -replace 'app.bsky.richtext.facet#', ''
+                $facetText = $postBox.Text.Substring($facet.index.byteStart, $facet.index.byteEnd - $facet.index.byteStart)
+                switch ($type) {
+                    'mention' {
+                        $mentionTextBox.Text = $facetText
+                        $mentionDidBox.Text = $facet.features[0].did
+                        # Clear tag and link fields
+                        $tagTextBox.Text = ''
+                        $tagNameBox.Text = ''
+                        $linkTextBox.Text = ''
+                        $linkUriBox.Text = ''
+                    }
+                    'tag' {
+                        $tagTextBox.Text = $facetText
+                        $tagNameBox.Text = $facet.features[0].tag
+                        # Clear mention and link fields
+                        $mentionTextBox.Text = ''
+                        $mentionDidBox.Text = ''
+                        $linkTextBox.Text = ''
+                        $linkUriBox.Text = ''
+                    }
+                    'link' {
+                        $linkTextBox.Text = $facetText
+                        $linkUriBox.Text = $facet.features[0].uri
+                        # Clear mention and tag fields
+                        $mentionTextBox.Text = ''
+                        $mentionDidBox.Text = ''
+                        $tagTextBox.Text = ''
+                        $tagNameBox.Text = ''
+                    }
                 }
-                'tag' {
-                    $tagTextBox.Text = $facetText
-                    $tagNameBox.Text = $facet.features[0].tag
-                    # Clear mention and link fields
-                    $mentionTextBox.Text = ''
-                    $mentionDidBox.Text = ''
-                    $linkTextBox.Text = ''
-                    $linkUriBox.Text = ''
-                }
-                'link' {
-                    $linkTextBox.Text = $facetText
-                    $linkUriBox.Text = $facet.features[0].uri
-                    # Clear mention and tag fields
-                    $mentionTextBox.Text = ''
-                    $mentionDidBox.Text = ''
-                    $tagTextBox.Text = ''
-                    $tagNameBox.Text = ''
-                }
+                # Always clear the usernameBox (Bluesky Username field)
+                $usernameBox.Text = ''
             }
-            # Always clear the usernameBox (Bluesky Username field)
-            $usernameBox.Text = ''
-        }
-    })
+        })
 
     # Preview area
     $previewLabel = New-Object Windows.Controls.TextBlock
@@ -653,7 +672,8 @@ function Show-BskyPostGui {
             try {
                 # Ensure session is started before posting
                 Start-BskySession -Credential $script:bskyCreds | Out-Null
-            } catch {
+            }
+            catch {
                 [System.Windows.MessageBox]::Show("Error starting session: $($_.Exception.Message)")
                 return
             }
@@ -671,4 +691,3 @@ function Show-BskyPostGui {
 }
 
 Show-BskyPostGui
-```
